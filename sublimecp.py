@@ -352,6 +352,33 @@ class ColorPickApiIsAvailableCommand(sublime_plugin.ApplicationCommand):
 
 
 class ColorPickCommand(sublime_plugin.TextCommand):
+
+    def hex_to_rgba(self, value):
+        # thanks to: https://github.com/vitorleal/Hex-to-RGB/issues
+        value = value.lstrip('#')
+        if len(value) == 3:
+            value = ''.join([v*2 for v in list(value)])
+        return tuple(int(value[i:i+2], 16) for i in range(0, 6, 2))+(1,)
+
+    def convert_to_rgba_css(self, word_region):
+        # thanks to: https://github.com/vitorleal/Hex-to-RGB/issues
+        word = self.view.substr(word_region)
+        re_hex_color = re.compile('#?([0-9a-fA-F]{3}([0-9a-fA-F]{3})?){1}$')
+        if re_hex_color.match(word):
+            rgba = self.hex_to_rgba(word)   # this command  four red  in 4 tuple
+            
+            # the default option
+            # rgba_css = 'rgba(%s,%s,%s,%s)' % rgba
+            
+            # my customisations for corona sdk unit rgba color scheme
+            rgba_Ur = round(rgba[0]/255,3)
+            rgba_Ug = round(rgba[1]/255,3)
+            rgba_Ub = round(rgba[2]/255,3)
+
+            rgba_css = '%s,%s,%s,%s' % (rgba_Ur,rgba_Ug,rgba_Ub,rgba[3] )
+            return rgba_css
+        return False
+
     def run(self, edit):
         sel = self.view.sel()
         selected = None
@@ -372,6 +399,11 @@ class ColorPickCommand(sublime_plugin.TextCommand):
                 color = color.upper()
             else:
                 color = color.lower()
+
+            # Determine user preferences to convert to RGBA unit format
+            rgba_unit = s.get("rgba_unit_output", True)
+            if rgba_unit:
+                color = self.convert_to_rgba_css(color)
 
             # replace all regions with color
             for region in sel:
